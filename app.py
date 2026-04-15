@@ -82,7 +82,7 @@ if uploaded_file is not None:
             
             # --- SYNTAX ANALISIS MUSIMAN ---
             max_month = vol_bulan.loc[vol_bulan['Volume Mingguan (Liter)'].idxmax(), 'Bulan']
-            st.write(f"**Analisis Musiman:** Puncak produksi tertinggi terjadi pada **Bulan {int(max_month)}**. Informasi ini krusial untuk menentukan strategi pengelolaan stok pakan[cite: 100, 104].")
+            st.write(f"**Analisis Musiman:** Puncak produksi tertinggi terjadi pada ****. Informasi ini krusial untuk menentukan strategi pengelolaan stok pakan[cite: 100, 104].")
 
         st.divider()
 
