@@ -6,4 +6,4 @@ openpyxl
 numpy
 plotly
 statsmodels
-sklearn.linear_model
+sklearn
