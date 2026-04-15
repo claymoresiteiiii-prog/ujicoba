@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 # Konfigurasi Halaman
 st.set_page_config(page_title="Dashboard Amang Farm", layout="wide")
 
-st.title("🐄 Dashboard Analisis Cerdas Peternakan Sapi Perah")
+st.title("🐄 Dashboard Analisis Peternakan Sapi Perah")
 st.markdown("Sistem otomatis untuk pembersihan, visualisasi, dan prediksi tren penjualan susu Amang Farm.")
 
 # ==========================================
