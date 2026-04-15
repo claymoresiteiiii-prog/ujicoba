@@ -77,22 +77,18 @@ if uploaded_file is not None:
     # ==========================================
     # 2. PRE-PROCESSING & PENGUATAN TIPE DATA
     # ==========================================
-    # PERBAIKAN: Paksa kolom waktu menjadi integer bulat agar filter tidak error
     if 'Tahun' in df.columns:
         df['Tahun'] = df['Tahun'].astype(int)
     if 'Minggu Ke' in df.columns:
         df['Minggu Ke'] = df['Minggu Ke'].astype(int)
 
-    # Menghitung volume mingguan jika hanya ada harian
     if 'Volume Mingguan (Liter)' not in df.columns and 'Volume Harian (Liter)' in df.columns:
         df['Volume Mingguan (Liter)'] = df['Volume Harian (Liter)'] * 7
 
-    # Menghitung profit jika belum ada
     if 'Harga per Liter (Rp)' in df.columns and 'Volume Mingguan (Liter)' in df.columns:
         if 'Estimasi Profit (Rp)' not in df.columns:
             df['Estimasi Profit (Rp)'] = df['Volume Mingguan (Liter)'] * df['Harga per Liter (Rp)']
 
-    # Membuat Kolom 'Bulan' otomatis dari 'Minggu Ke'
     if 'Bulan' not in df.columns and 'Minggu Ke' in df.columns:
         df['Bulan'] = np.ceil(df['Minggu Ke'] / 4.33).astype(int)
         df['Bulan'] = df['Bulan'].apply(lambda x: 12 if x > 12 else x)
@@ -101,24 +97,47 @@ if uploaded_file is not None:
     # --- PENGATURAN FILTER DATA ---
     # ==========================================
     st.sidebar.markdown("---")
-    st.sidebar.header("⚙️ Pengaturan Filter Tahun")
+    st.sidebar.header("⚙️ Pengaturan Filter Data")
     
-    # Salin data asli untuk difilter
     df_final = df.copy()
 
+    # FILTER TAHUN
     if 'Tahun' in df_final.columns:
-        # Mengambil daftar tahun yang unik
         list_tahun = sorted(df_final['Tahun'].unique().tolist())
         opsi_tahun = ["Semua Tahun"] + list_tahun
-        
-        # Pilihan filter pengguna
         tahun_terpilih = st.sidebar.selectbox("Pilih Tahun Analisis:", opsi_tahun)
-        
-        # Eksekusi filter
         if tahun_terpilih != "Semua Tahun":
             df_final = df_final[df_final['Tahun'] == tahun_terpilih]
     else:
         tahun_terpilih = "Semua Tahun"
+
+    # FILTER BULAN (Ditambahkan)
+    if 'Bulan' in df_final.columns:
+        list_bulan = sorted(df_final['Bulan'].unique().tolist())
+        opsi_bulan = ["Semua Bulan"] + list_bulan
+        bulan_terpilih = st.sidebar.selectbox("Pilih Bulan Analisis:", opsi_bulan)
+        if bulan_terpilih != "Semua Bulan":
+            df_final = df_final[df_final['Bulan'] == bulan_terpilih]
+
+    # FILTER MINGGU (Ditambahkan)
+    if 'Minggu Ke' in df_final.columns:
+        list_minggu = sorted(df_final['Minggu Ke'].unique().tolist())
+        opsi_minggu = ["Semua Minggu"] + list_minggu
+        minggu_terpilih = st.sidebar.selectbox("Pilih Minggu Analisis:", opsi_minggu)
+        if minggu_terpilih != "Semua Minggu":
+            df_final = df_final[df_final['Minggu Ke'] == minggu_terpilih]
+
+    # ==========================================
+    # --- PENGATURAN TAMPILAN GRAFIK (CHECKBOX) ---
+    # ==========================================
+    st.sidebar.markdown("---")
+    st.sidebar.header("👁️ Pengaturan Tampilan Visualisasi")
+    
+    # Checkbox untuk masing-masing bagian
+    tampil_deskriptif = st.sidebar.checkbox("1. Analisis Deskriptif", value=True)
+    tampil_profit = st.sidebar.checkbox("2. Analisis Profit & Pendapatan", value=True)
+    tampil_korelasi = st.sidebar.checkbox("3. Analisis Korelasi & Pie", value=True)
+    tampil_prediksi = st.sidebar.checkbox("4. Prediksi Tren", value=True)
 
     # ==========================================
     # 3. VISUALISASI DATA
@@ -126,87 +145,85 @@ if uploaded_file is not None:
     st.markdown("---")
     
     if df_final.empty:
-        st.warning("⚠️ Tidak ada data untuk filter tahun tersebut. Silakan pilih tahun lain.")
+        st.warning("⚠️ Tidak ada data untuk filter tersebut. Silakan atur ulang filter Anda.")
     else:
         # --- A. ANALISIS DESKRIPTIF (Hist & Bar) ---
-        st.header(f"📊 Analisis Deskriptif ({tahun_terpilih})")
-        c1, c2 = st.columns(2)
-        with c1:
-            fig_vol = px.histogram(df_final, x="Volume Mingguan (Liter)", title="Distribusi Volume Produksi", color_discrete_sequence=['#54A24B'])
-            st.plotly_chart(fig_vol, use_container_width=True)
-            
-        with c2:
-            vol_bulan = df_final.groupby('Bulan')['Volume Mingguan (Liter)'].mean().reset_index()
-            vol_bulan['Bulan_Str'] = "Bulan " + vol_bulan['Bulan'].astype(str)
-            fig_bulan = px.bar(vol_bulan, x='Bulan_Str', y='Volume Mingguan (Liter)', title="Trend Rata-Rata Produksi Bulanan", color='Volume Mingguan (Liter)', color_continuous_scale='Blues')
-            st.plotly_chart(fig_bulan, use_container_width=True)
-
-        st.markdown("---")
+        if tampil_deskriptif:
+            st.header(f"📊 Analisis Deskriptif ({tahun_terpilih})")
+            c1, c2 = st.columns(2)
+            with c1:
+                fig_vol = px.histogram(df_final, x="Volume Mingguan (Liter)", title="Distribusi Volume Produksi", color_discrete_sequence=['#54A24B'])
+                st.plotly_chart(fig_vol, use_container_width=True)
+                
+            with c2:
+                vol_bulan = df_final.groupby('Bulan')['Volume Mingguan (Liter)'].mean().reset_index()
+                vol_bulan['Bulan_Str'] = "Bulan " + vol_bulan['Bulan'].astype(str)
+                fig_bulan = px.bar(vol_bulan, x='Bulan_Str', y='Volume Mingguan (Liter)', title="Trend Rata-Rata Produksi Bulanan", color='Volume Mingguan (Liter)', color_continuous_scale='Blues')
+                st.plotly_chart(fig_bulan, use_container_width=True)
+            st.markdown("---")
 
         # --- B. ANALISIS PROFIT ---
-        st.header("💰 Analisis Profit & Pendapatan")
-        if 'Estimasi Profit (Rp)' in df_final.columns:
-            df_final['Profit (Juta Rp)'] = df_final['Estimasi Profit (Rp)'] / 1_000_000
-            df_final['Label Waktu'] = "Mg " + df_final['Minggu Ke'].astype(str)
+        if tampil_profit:
+            st.header("💰 Analisis Profit & Pendapatan")
+            if 'Estimasi Profit (Rp)' in df_final.columns:
+                df_final['Profit (Juta Rp)'] = df_final['Estimasi Profit (Rp)'] / 1_000_000
+                df_final['Label Waktu'] = "Mg " + df_final['Minggu Ke'].astype(str)
 
-            # Membatasi tampilan 25 data terakhir agar grafik tidak saling menabrak (khusus bar chart profit)
-            df_profit_tampil = df_final.sort_values(by=['Tahun', 'Minggu Ke']).tail(25)
-            
-            fig_profit = px.bar(df_profit_tampil, 
-                                x='Label Waktu', y='Profit (Juta Rp)',
-                                color='Profit (Juta Rp)', color_continuous_scale='Greens',
-                                title="Tren Profit (Dibatasi 25 Periode Terakhir)", text_auto='.2f')
-            fig_profit.update_layout(xaxis_tickangle=-45)
-            fig_profit.update_traces(textposition="outside")
-            st.plotly_chart(fig_profit, use_container_width=True)
-
-        st.markdown("---")
+                df_profit_tampil = df_final.sort_values(by=['Tahun', 'Minggu Ke']).tail(25)
+                
+                fig_profit = px.bar(df_profit_tampil, 
+                                    x='Label Waktu', y='Profit (Juta Rp)',
+                                    color='Profit (Juta Rp)', color_continuous_scale='Greens',
+                                    title="Tren Profit (Dibatasi 25 Periode Terakhir)", text_auto='.2f')
+                fig_profit.update_layout(xaxis_tickangle=-45)
+                fig_profit.update_traces(textposition="outside")
+                st.plotly_chart(fig_profit, use_container_width=True)
+            st.markdown("---")
 
         # --- C. ANALISIS KORELASI & PIE ---
-        st.header("🌐 Analisis Korelasi & Distribusi Profit")
-        c3, c4 = st.columns(2)
-        with c3:
-            fig_corr = px.scatter(df_final, x="Harga per Liter (Rp)", y="Volume Mingguan (Liter)", trendline="ols", title="Korelasi Harga Jual vs Volume")
-            st.plotly_chart(fig_corr, use_container_width=True)
-            
-        with c4:
-            profit_pie = df_final.groupby('Bulan')['Estimasi Profit (Rp)'].sum().reset_index()
-            profit_pie['Bulan_Str'] = "Bulan " + profit_pie['Bulan'].astype(str)
-            fig_pie = px.pie(profit_pie, values='Estimasi Profit (Rp)', names='Bulan_Str', title="Persentase Kontribusi Profit per Bulan", hole=0.4)
-            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-        st.markdown("---")
+        if tampil_korelasi:
+            st.header("🌐 Analisis Korelasi & Distribusi Profit")
+            c3, c4 = st.columns(2)
+            with c3:
+                fig_corr = px.scatter(df_final, x="Harga per Liter (Rp)", y="Volume Mingguan (Liter)", trendline="ols", title="Korelasi Harga Jual vs Volume")
+                st.plotly_chart(fig_corr, use_container_width=True)
+                
+            with c4:
+                profit_pie = df_final.groupby('Bulan')['Estimasi Profit (Rp)'].sum().reset_index()
+                profit_pie['Bulan_Str'] = "Bulan " + profit_pie['Bulan'].astype(str)
+                fig_pie = px.pie(profit_pie, values='Estimasi Profit (Rp)', names='Bulan_Str', title="Persentase Kontribusi Profit per Bulan", hole=0.4)
+                fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig_pie, use_container_width=True)
+            st.markdown("---")
 
         # --- D. PREDIKSI TREN ---
-        st.header("📈 Prediksi Tren Penjualan Masa Depan")
-        
-        # Pastikan data diurutkan dengan benar
-        df_pred = df_final.sort_values(by=['Tahun', 'Minggu Ke']).reset_index(drop=True)
-        df_pred['Urutan_Waktu'] = df_pred.index + 1
-        
-        X = df_pred[['Urutan_Waktu']].values
-        y = df_pred['Volume Mingguan (Liter)'].values
-        
-        if len(df_pred) > 1:
-            model = LinearRegression().fit(X, y)
-            # Prediksi 12 minggu ke depan
-            future_X = np.array(range(len(df_pred) + 1, len(df_pred) + 13)).reshape(-1, 1)
-            future_y = model.predict(future_X)
+        if tampil_prediksi:
+            st.header("📈 Prediksi Tren Penjualan Masa Depan")
             
-            df_trend = pd.concat([
-                pd.DataFrame({'Waktu': df_pred['Urutan_Waktu'], 'Volume': y, 'Keterangan': 'Data Historis (Real)'}),
-                pd.DataFrame({'Waktu': future_X.flatten(), 'Volume': future_y, 'Keterangan': 'Garis Prediksi (Future)'})
-            ])
+            df_pred = df_final.sort_values(by=['Tahun', 'Minggu Ke']).reset_index(drop=True)
+            df_pred['Urutan_Waktu'] = df_pred.index + 1
             
-            fig_trend = px.line(df_trend, x='Waktu', y='Volume', color='Keterangan', 
-                                title=f"Proyeksi Volume Produksi 12 Minggu Kedepan ({tahun_terpilih})",
-                                color_discrete_map={"Data Historis (Real)": "blue", "Garis Prediksi (Future)": "red"})
-            fig_trend.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-            st.plotly_chart(fig_trend, use_container_width=True)
+            X = df_pred[['Urutan_Waktu']].values
+            y = df_pred['Volume Mingguan (Liter)'].values
             
-            kondisi = "Naik 📈" if model.coef_[0] > 0 else "Turun 📉"
-            st.info(f"💡 **Kesimpulan Algoritma:** Berdasarkan data periode yang dipilih, tren produksi kedepan diproyeksikan akan mengalami tren **{kondisi}**.")
+            if len(df_pred) > 1:
+                model = LinearRegression().fit(X, y)
+                future_X = np.array(range(len(df_pred) + 1, len(df_pred) + 13)).reshape(-1, 1)
+                future_y = model.predict(future_X)
+                
+                df_trend = pd.concat([
+                    pd.DataFrame({'Waktu': df_pred['Urutan_Waktu'], 'Volume': y, 'Keterangan': 'Data Historis (Real)'}),
+                    pd.DataFrame({'Waktu': future_X.flatten(), 'Volume': future_y, 'Keterangan': 'Garis Prediksi (Future)'})
+                ])
+                
+                fig_trend = px.line(df_trend, x='Waktu', y='Volume', color='Keterangan', 
+                                    title=f"Proyeksi Volume Produksi 12 Minggu Kedepan ({tahun_terpilih})",
+                                    color_discrete_map={"Data Historis (Real)": "blue", "Garis Prediksi (Future)": "red"})
+                fig_trend.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                st.plotly_chart(fig_trend, use_container_width=True)
+                
+                kondisi = "Naik 📈" if model.coef_[0] > 0 else "Turun 📉"
+                st.info(f"💡 **Kesimpulan Algoritma:** Berdasarkan data periode yang dipilih, tren produksi kedepan diproyeksikan akan mengalami tren **{kondisi}**.")
             
 else:
     st.info("👈 Silakan unggah file CSV Anda pada menu di sebelah kiri layar.")
