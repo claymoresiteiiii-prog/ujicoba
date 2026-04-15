@@ -25,127 +25,118 @@ if uploaded_file is not None:
     jml_missing = df.isnull().sum().sum()
     
     if jml_missing > 0:
-        col_missing = df.isnull().sum()
-        st.warning(f"⚠️ Terdeteksi {jml_missing} nilai kosong pada dataset Anda.")
-        
-        with st.expander("Lihat detail kolom yang kosong"):
-            st.write(col_missing[col_missing > 0])
-        
-        # PROSES PEMBERSIHAN
-        # 1. Hapus baris yang seluruh kolomnya kosong (jika ada)
         df.dropna(how='all', inplace=True)
-        
-        # 2. Mengisi nilai numerik yang kosong dengan Median (Nilai Tengah)
-        # Median dipilih karena lebih tahan terhadap pencilan (outlier) dibanding rata-rata
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         for col in numeric_cols:
             if df[col].isnull().any():
-                median_value = df[col].median()
-                df[col] = df[col].fillna(median_value)
+                df[col] = df[col].fillna(df[col].median())
         
-        # 3. Mengisi data teks/kategori yang kosong dengan "Tidak Diketahui"
         object_cols = df.select_dtypes(include=['object']).columns
         for col in object_cols:
             df[col] = df[col].fillna("Tidak Diketahui")
             
-        st.success("✅ Pembersihan selesai: Nilai numerik kosong diisi dengan Median, nilai teks diisi dengan label standar.")
+        st.success("✅ Pembersihan selesai: Nilai numerik kosong diisi dengan Median[cite: 120, 121].")
     else:
-        st.success("✅ Data Bersih: Tidak ditemukan nilai kosong (missing values) pada dataset.")
+        st.success("✅ Data Bersih: Tidak ditemukan nilai kosong pada dataset[cite: 122].")
 
     # ==========================================
-    # PRE-PROCESSING (Penyesuaian Otomatis)
+    # PRE-PROCESSING & FILTERING TAHUN
     # ==========================================
-    # 1. Membuat kolom "Bulan" dari "Minggu Ke" (Asumsi 1 bulan = 4.33 minggu)
-    if 'Minggu Ke' in df.columns and 'Bulan' not in df.columns:
-        df['Bulan'] = np.ceil(df['Minggu Ke'] / 4.33).astype(int)
-        df['Bulan'] = df['Bulan'].apply(lambda x: 12 if x > 12 else x)
+    # Pastikan kolom Tahun ada untuk filtering
+    if 'Tahun' in df.columns:
+        # Menyiapkan pilihan tahun dari data
+        list_tahun = sorted(df['Tahun'].unique().tolist())
+        # Menambahkan pilihan "Semua Tahun" di awal list
+        opsi_tahun = ["Semua Tahun"] + list_tahun
+        
+        # Membuat sidebar untuk filter
+        st.sidebar.header("⚙️ Pengaturan Filter")
+        tahun_terpilih = st.sidebar.selectbox("Pilih Tahun Analisis:", opsi_tahun)
+        
+        # Logika Filtering Data
+        if tahun_terpilih != "Semua Tahun":
+            df_final = df[df['Tahun'] == tahun_terpilih].copy()
+        else:
+            df_final = df.copy()
+    else:
+        st.sidebar.warning("⚠️ Kolom 'Tahun' tidak ditemukan. Filtering tidak aktif.")
+        df_final = df.copy()
 
-    # 2. Jika file tidak punya 'Volume Mingguan' tapi punya 'Volume Harian', kita buatkan otomatis
-    if 'Volume Mingguan (Liter)' not in df.columns and 'Volume Harian (Liter)' in df.columns:
-        df['Volume Mingguan (Liter)'] = df['Volume Harian (Liter)'] * 7
+    # Penyesuaian Kolom Otomatis pada data yang sudah difilter
+    if 'Minggu Ke' in df_final.columns and 'Bulan' not in df_final.columns:
+        df_final['Bulan'] = np.ceil(df_final['Minggu Ke'] / 4.33).astype(int)
+        df_final['Bulan'] = df_final['Bulan'].apply(lambda x: 12 if x > 12 else x)
 
-    with st.expander("👀 Lihat Data yang Sudah Dibersihkan"):
-        st.dataframe(df.head())
+    if 'Volume Mingguan (Liter)' not in df_final.columns and 'Volume Harian (Liter)' in df_final.columns:
+        df_final['Volume Mingguan (Liter)'] = df_final['Volume Harian (Liter)'] * 7
+
+    with st.expander(f"👀 Lihat Data Terfilter ({tahun_terpilih})"):
+        st.dataframe(df_final.head())
 
     st.divider()
 
-    # Pastikan data esensial ada sebelum menggambar grafik
-    if 'Harga per Liter (Rp)' in df.columns and 'Volume Mingguan (Liter)' in df.columns:
+    # ==========================================
+    # VISUALISASI DATA (MENGGUNAKAN df_final)
+    # ==========================================
+    if 'Harga per Liter (Rp)' in df_final.columns and 'Volume Mingguan (Liter)' in df_final.columns:
 
-        # ==========================================
         # 1. ANALISIS UNIVARIAT
-        # ==========================================
-        st.header("📊 2. Analisis Univariat")
+        st.header(f"📊 2. Analisis Univariat - Tahun {tahun_terpilih}")
         st.markdown("Menganalisis karakteristik dasar dari variabel tunggal[cite: 260].")
         
         col1, col2 = st.columns(2)
-        
         with col1:
-            fig_harga = px.histogram(df, x="Harga per Liter (Rp)", nbins=20, 
+            fig_harga = px.histogram(df_final, x="Harga per Liter (Rp)", nbins=20, 
                                      title="Distribusi Harga Jual Susu",
                                      color_discrete_sequence=['#4C78A8'])
-            fig_harga.update_layout(yaxis_title="Frekuensi")
             st.plotly_chart(fig_harga, use_container_width=True)
-            
-            harga_rata = df['Harga per Liter (Rp)'].mean()
-            st.info(f"**Rata-rata Harga:** Rp {harga_rata:,.0f} per liter.")
+            st.info(f"**Rata-rata Harga:** Rp {df_final['Harga per Liter (Rp)'].mean():,.0f}")
 
         with col2:
-            fig_vol = px.histogram(df, x="Volume Mingguan (Liter)", nbins=20,
+            fig_vol = px.histogram(df_final, x="Volume Mingguan (Liter)", nbins=20,
                              title="Distribusi Volume Produksi Mingguan",
                              color_discrete_sequence=['#54A24B'])
-            fig_vol.update_layout(yaxis_title="Frekuensi")
             st.plotly_chart(fig_vol, use_container_width=True)
-            
-            vol_rata = df['Volume Mingguan (Liter)'].mean()
-            st.info(f"**Rata-rata Produksi:** {vol_rata:,.0f} liter/minggu.")
+            st.info(f"**Rata-rata Produksi:** {df_final['Volume Mingguan (Liter)'].mean():,.0f} liter")
 
         st.divider()
 
-        # ==========================================
         # 2. ANALISIS BIVARIAT
-        # ==========================================
-        st.header("📈 3. Analisis Bivariat")
+        st.header(f"📈 3. Analisis Bivariat - Tahun {tahun_terpilih}")
         st.markdown("Mencari keterkaitan atau pola hubungan antara dua variabel[cite: 263].")
 
         col3, col4 = st.columns(2)
-
         with col3:
-            vol_bulan = df.groupby('Bulan')['Volume Mingguan (Liter)'].mean().reset_index()
+            vol_bulan = df_final.groupby('Bulan')['Volume Mingguan (Liter)'].mean().reset_index()
             fig_bulan = px.bar(vol_bulan, x='Bulan', y='Volume Mingguan (Liter)', 
                                title="Pola Musiman: Rata-rata Volume per Bulan",
-                               text_auto='.0f', color='Volume Mingguan (Liter)', 
                                color_continuous_scale='Blues')
             st.plotly_chart(fig_bulan, use_container_width=True)
 
         with col4:
-            fig_korelasi = px.scatter(df, x="Harga per Liter (Rp)", y="Volume Mingguan (Liter)", 
+            fig_korelasi = px.scatter(df_final, x="Harga per Liter (Rp)", y="Volume Mingguan (Liter)", 
                                       trendline="ols", title="Korelasi: Harga vs Volume",
-                                      opacity=0.6, color_discrete_sequence=['#E45756'])
+                                      color_discrete_sequence=['#E45756'])
             st.plotly_chart(fig_korelasi, use_container_width=True)
 
         st.divider()
 
-        # ==========================================
         # 3. ANALISIS MULTIVARIAT
-        # ==========================================
-        st.header("🌐 4. Analisis Multivariat")
+        st.header(f"🌐 4. Analisis Multivariat - Tahun {tahun_terpilih}")
         st.markdown("Melihat interaksi kompleks antara tiga variabel atau lebih sekaligus[cite: 267].")
 
-        if 'Laba Pendapatan 2 Mingguan (Rp)' in df.columns:
-            fig_multi = px.scatter(df, x="Minggu Ke", y="Volume Mingguan (Liter)", 
-                                   size="Laba Pendapatan 2 Mingguan (Rp)", color="Tahun",
-                                   hover_name="Bulan", size_max=45,
-                                   title="Bubble Chart: Perjalanan Bisnis (Waktu, Volume, Laba, Tahun)")
+        if 'Laba Pendapatan 2 Mingguan (Rp)' in df_final.columns:
+            fig_multi = px.scatter(df_final, x="Minggu Ke", y="Volume Mingguan (Liter)", 
+                                   size="Laba Pendapatan 2 Mingguan (Rp)", color="Tahun" if tahun_terpilih == "Semua Tahun" else "Bulan",
+                                   size_max=45, title="Bubble Chart: Perjalanan Bisnis")
             st.plotly_chart(fig_multi, use_container_width=True)
         else:
-            fig_multi = px.scatter(df, x="Minggu Ke", y="Volume Mingguan (Liter)", 
-                                   size="Harga per Liter (Rp)", color="Tahun",
-                                   hover_name="Bulan", size_max=20,
-                                   title="Bubble Chart: Produksi & Harga Sepanjang Waktu")
+            fig_multi = px.scatter(df_final, x="Minggu Ke", y="Volume Mingguan (Liter)", 
+                                   size="Harga per Liter (Rp)", color="Tahun" if tahun_terpilih == "Semua Tahun" else "Bulan",
+                                   size_max=20, title="Bubble Chart: Produksi & Harga")
             st.plotly_chart(fig_multi, use_container_width=True)
 
     else:
-        st.error("❌ Kolom 'Harga per Liter (Rp)' atau 'Volume' tidak ditemukan dalam file.")
+        st.error("❌ Kolom 'Harga per Liter (Rp)' atau 'Volume' tidak ditemukan.")
 else:
     st.info("👈 Silakan unggah file CSV Amang Farm untuk memulai analisis.")
