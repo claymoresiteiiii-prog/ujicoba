@@ -141,11 +141,10 @@ if uploaded_file is not None:
             st.divider()
 
             # ==========================================
-            # 4. ANALISIS PROFIT & PENDAPATAN (BARU)
+            # 4. ANALISIS PROFIT & PENDAPATAN
             # ==========================================
             st.header("💰 3. Analisis Profit & Pendapatan")
             if 'Estimasi Profit (Rp)' in df_final.columns:
-                # Membuat label X-Axis yang informatif
                 if 'Tahun' in df_final.columns and 'Minggu Ke' in df_final.columns:
                     df_final['Label Waktu'] = "Thn " + df_final['Tahun'].astype(str) + " - Mg " + df_final['Minggu Ke'].astype(str)
                 elif col_harian:
@@ -153,12 +152,11 @@ if uploaded_file is not None:
                 else:
                     df_final['Label Waktu'] = "Baris Data ke-" + df_final.index.astype(str)
                 
-                # Mengurutkan data agar rapi di chart
                 df_plot_profit = df_final.sort_values('Estimasi Profit (Rp)', ascending=False)
 
                 fig_profit = px.bar(df_plot_profit, x='Label Waktu', y='Estimasi Profit (Rp)',
                                     title=f"Grafik Profit/Penjualan ({profit_terpilih})",
-                                    text_auto='.2s', # Memformat angka otomatis
+                                    text_auto='.2s', 
                                     color='Estimasi Profit (Rp)', color_continuous_scale='Greens')
                 
                 fig_profit.update_traces(textfont_size=12, textangle=0, textposition="outside", cliponaxis=False)
@@ -167,9 +165,9 @@ if uploaded_file is not None:
             st.divider()
 
             # ==========================================
-            # 5. ANALISIS MULTIVARIAT & KORELASI
+            # 5. ANALISIS MULTIVARIAT & PERSENTASE
             # ==========================================
-            st.header("🌐 4. Analisis Multivariat & Korelasi")
+            st.header("🌐 4. Analisis Multivariat & Persentase Profit")
             col3, col4 = st.columns(2)
 
             with col3:
@@ -185,20 +183,29 @@ if uploaded_file is not None:
                     st.info("ℹ️ Data tidak cukup untuk membuat plot korelasi (minimal 2 baris data dibutuhkan).")
 
             with col4:
-                if 'Minggu Ke' in df_final.columns and 'Estimasi Profit (Rp)' in df_final.columns:
-                    fig_multi = px.scatter(df_final, x="Minggu Ke", y="Volume Mingguan (Liter)", 
-                                           size="Estimasi Profit (Rp)", color="Harga per Liter (Rp)",
-                                           title="Bubble Chart: Profit, Volume & Harga")
-                    st.plotly_chart(fig_multi, use_container_width=True)
+                # MENGGANTI BUBBLE CHART MENJADI PIE CHART (DONUT CHART)
+                if 'Bulan' in df_final.columns and 'Estimasi Profit (Rp)' in df_final.columns:
+                    # Agregasi data profit berdasarkan bulan
+                    profit_per_bulan = df_final.groupby('Bulan')['Estimasi Profit (Rp)'].sum().reset_index()
+                    profit_per_bulan['Label Bulan'] = "Bulan " + profit_per_bulan['Bulan'].astype(str)
+                    
+                    fig_pie = px.pie(profit_per_bulan, values='Estimasi Profit (Rp)', names='Label Bulan',
+                                     title="Distribusi Persentase Profit per Bulan",
+                                     hole=0.4, # Membuat lubang di tengah agar menjadi Donut Chart
+                                     color_discrete_sequence=px.colors.sequential.Teal)
+                    
+                    fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+                    st.plotly_chart(fig_pie, use_container_width=True)
+                else:
+                    st.info("ℹ️ Data 'Bulan' atau 'Estimasi Profit (Rp)' tidak ditemukan untuk membuat grafik persentase.")
 
             st.divider()
 
             # ==========================================
-            # 6. CHART TREND & PREDIKSI (Berdasarkan Dataset Utuh)
+            # 6. CHART TREND & PREDIKSI
             # ==========================================
             st.header("📈 5. Prediksi Tren Penjualan Masa Depan")
             
-            # Prediksi tetap menggunakan df asli
             df_pred = df.sort_values(by=['Tahun', 'Minggu Ke'] if 'Tahun' in df.columns else ['Minggu Ke']).reset_index()
             df_pred['Urutan_Waktu'] = df_pred.index + 1
             X = df_pred[['Urutan_Waktu']].values
