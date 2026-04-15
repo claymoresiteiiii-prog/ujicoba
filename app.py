@@ -141,9 +141,35 @@ if uploaded_file is not None:
             st.divider()
 
             # ==========================================
-            # 4. ANALISIS MULTIVARIAT & KORELASI
+            # 4. ANALISIS PROFIT & PENDAPATAN (BARU)
             # ==========================================
-            st.header("🌐 3. Analisis Multivariat & Korelasi")
+            st.header("💰 3. Analisis Profit & Pendapatan")
+            if 'Estimasi Profit (Rp)' in df_final.columns:
+                # Membuat label X-Axis yang informatif
+                if 'Tahun' in df_final.columns and 'Minggu Ke' in df_final.columns:
+                    df_final['Label Waktu'] = "Thn " + df_final['Tahun'].astype(str) + " - Mg " + df_final['Minggu Ke'].astype(str)
+                elif col_harian:
+                    df_final['Label Waktu'] = df_final[col_harian].astype(str)
+                else:
+                    df_final['Label Waktu'] = "Baris Data ke-" + df_final.index.astype(str)
+                
+                # Mengurutkan data agar rapi di chart
+                df_plot_profit = df_final.sort_values('Estimasi Profit (Rp)', ascending=False)
+
+                fig_profit = px.bar(df_plot_profit, x='Label Waktu', y='Estimasi Profit (Rp)',
+                                    title=f"Grafik Profit/Penjualan ({profit_terpilih})",
+                                    text_auto='.2s', # Memformat angka otomatis
+                                    color='Estimasi Profit (Rp)', color_continuous_scale='Greens')
+                
+                fig_profit.update_traces(textfont_size=12, textangle=0, textposition="outside", cliponaxis=False)
+                st.plotly_chart(fig_profit, use_container_width=True)
+
+            st.divider()
+
+            # ==========================================
+            # 5. ANALISIS MULTIVARIAT & KORELASI
+            # ==========================================
+            st.header("🌐 4. Analisis Multivariat & Korelasi")
             col3, col4 = st.columns(2)
 
             with col3:
@@ -159,7 +185,6 @@ if uploaded_file is not None:
                     st.info("ℹ️ Data tidak cukup untuk membuat plot korelasi (minimal 2 baris data dibutuhkan).")
 
             with col4:
-                # Menggunakan warna berdasarkan Estimasi Profit agar perbedaan penjualan terlihat jelas
                 if 'Minggu Ke' in df_final.columns and 'Estimasi Profit (Rp)' in df_final.columns:
                     fig_multi = px.scatter(df_final, x="Minggu Ke", y="Volume Mingguan (Liter)", 
                                            size="Estimasi Profit (Rp)", color="Harga per Liter (Rp)",
@@ -169,9 +194,9 @@ if uploaded_file is not None:
             st.divider()
 
             # ==========================================
-            # 5. CHART TREND & PREDIKSI (Berdasarkan Dataset Utuh)
+            # 6. CHART TREND & PREDIKSI (Berdasarkan Dataset Utuh)
             # ==========================================
-            st.header("📈 4. Prediksi Tren Penjualan Masa Depan")
+            st.header("📈 5. Prediksi Tren Penjualan Masa Depan")
             
             # Prediksi tetap menggunakan df asli
             df_pred = df.sort_values(by=['Tahun', 'Minggu Ke'] if 'Tahun' in df.columns else ['Minggu Ke']).reset_index()
