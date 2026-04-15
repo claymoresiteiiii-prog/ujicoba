@@ -111,7 +111,7 @@ if uploaded_file is not None:
     else:
         tahun_terpilih = "Semua Tahun"
 
-    # FILTER BULAN (Ditambahkan)
+    # FILTER BULAN
     if 'Bulan' in df_final.columns:
         list_bulan = sorted(df_final['Bulan'].unique().tolist())
         opsi_bulan = ["Semua Bulan"] + list_bulan
@@ -119,7 +119,7 @@ if uploaded_file is not None:
         if bulan_terpilih != "Semua Bulan":
             df_final = df_final[df_final['Bulan'] == bulan_terpilih]
 
-    # FILTER MINGGU (Ditambahkan)
+    # FILTER MINGGU
     if 'Minggu Ke' in df_final.columns:
         list_minggu = sorted(df_final['Minggu Ke'].unique().tolist())
         opsi_minggu = ["Semua Minggu"] + list_minggu
@@ -133,7 +133,6 @@ if uploaded_file is not None:
     st.sidebar.markdown("---")
     st.sidebar.header("👁️ Pengaturan Tampilan Visualisasi")
     
-    # Checkbox untuk masing-masing bagian
     tampil_deskriptif = st.sidebar.checkbox("1. Analisis Deskriptif", value=True)
     tampil_profit = st.sidebar.checkbox("2. Analisis Profit & Pendapatan", value=True)
     tampil_korelasi = st.sidebar.checkbox("3. Analisis Korelasi & Pie", value=True)
@@ -155,11 +154,20 @@ if uploaded_file is not None:
                 fig_vol = px.histogram(df_final, x="Volume Mingguan (Liter)", title="Distribusi Volume Produksi", color_discrete_sequence=['#54A24B'])
                 st.plotly_chart(fig_vol, use_container_width=True)
                 
+                # Tambahan Kesimpulan Histogram
+                rata_vol = df_final['Volume Mingguan (Liter)'].mean()
+                st.info(f"💡 **Kesimpulan:** Mayoritas produksi pada periode ini terdistribusi dengan nilai rata-rata **{rata_vol:.2f} liter/minggu**.")
+                
             with c2:
                 vol_bulan = df_final.groupby('Bulan')['Volume Mingguan (Liter)'].mean().reset_index()
                 vol_bulan['Bulan_Str'] = "Bulan " + vol_bulan['Bulan'].astype(str)
                 fig_bulan = px.bar(vol_bulan, x='Bulan_Str', y='Volume Mingguan (Liter)', title="Trend Rata-Rata Produksi Bulanan", color='Volume Mingguan (Liter)', color_continuous_scale='Blues')
                 st.plotly_chart(fig_bulan, use_container_width=True)
+                
+                # Tambahan Kesimpulan Bar Bulanan
+                if not vol_bulan.empty:
+                    bulan_tertinggi = vol_bulan.loc[vol_bulan['Volume Mingguan (Liter)'].idxmax(), 'Bulan_Str']
+                    st.info(f"💡 **Kesimpulan:** Secara historis pada data yang difilter, rata-rata produksi tertinggi dicapai pada **{bulan_tertinggi}**.")
             st.markdown("---")
 
         # --- B. ANALISIS PROFIT ---
@@ -178,6 +186,12 @@ if uploaded_file is not None:
                 fig_profit.update_layout(xaxis_tickangle=-45)
                 fig_profit.update_traces(textposition="outside")
                 st.plotly_chart(fig_profit, use_container_width=True)
+                
+                # Tambahan Kesimpulan Profit
+                if not df_profit_tampil.empty:
+                    max_profit = df_profit_tampil['Profit (Juta Rp)'].max()
+                    mg_max = df_profit_tampil.loc[df_profit_tampil['Profit (Juta Rp)'].idxmax(), 'Label Waktu']
+                    st.info(f"💡 **Kesimpulan:** Puncak keuntungan dari rentang periode yang ditampilkan terjadi pada **{mg_max}** dengan total profit sebesar **Rp {max_profit:.2f} Juta**.")
             st.markdown("---")
 
         # --- C. ANALISIS KORELASI & PIE ---
@@ -188,12 +202,21 @@ if uploaded_file is not None:
                 fig_corr = px.scatter(df_final, x="Harga per Liter (Rp)", y="Volume Mingguan (Liter)", trendline="ols", title="Korelasi Harga Jual vs Volume")
                 st.plotly_chart(fig_corr, use_container_width=True)
                 
+                # Tambahan Kesimpulan Korelasi
+                st.info("💡 **Kesimpulan:** Pola penyebaran titik memetakan seberapa elastis pengaruh perubahan harga per liter terhadap volume susu yang dihasilkan/terjual.")
+                
             with c4:
                 profit_pie = df_final.groupby('Bulan')['Estimasi Profit (Rp)'].sum().reset_index()
                 profit_pie['Bulan_Str'] = "Bulan " + profit_pie['Bulan'].astype(str)
                 fig_pie = px.pie(profit_pie, values='Estimasi Profit (Rp)', names='Bulan_Str', title="Persentase Kontribusi Profit per Bulan", hole=0.4)
                 fig_pie.update_traces(textposition='inside', textinfo='percent+label')
                 st.plotly_chart(fig_pie, use_container_width=True)
+                
+                # Tambahan Kesimpulan Pie
+                if not profit_pie.empty:
+                    bulan_dominan = profit_pie.loc[profit_pie['Estimasi Profit (Rp)'].idxmax(), 'Bulan_Str']
+                    persentase = (profit_pie['Estimasi Profit (Rp)'].max() / profit_pie['Estimasi Profit (Rp)'].sum()) * 100
+                    st.info(f"💡 **Kesimpulan:** Penyumbang omzet/profit paling dominan adalah **{bulan_dominan}** dengan persentase kontribusi sebesar **{persentase:.1f}%** dari total keseluruhan periode ini.")
             st.markdown("---")
 
         # --- D. PREDIKSI TREN ---
@@ -222,8 +245,9 @@ if uploaded_file is not None:
                 fig_trend.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
                 st.plotly_chart(fig_trend, use_container_width=True)
                 
-                kondisi = "Naik 📈" if model.coef_[0] > 0 else "Turun 📉"
-                st.info(f"💡 **Kesimpulan Algoritma:** Berdasarkan data periode yang dipilih, tren produksi kedepan diproyeksikan akan mengalami tren **{kondisi}**.")
+                # Kesimpulan Regresi Linear
+                kondisi = "NAIK 📈" if model.coef_[0] > 0 else "TURUN 📉"
+                st.info(f"💡 **Kesimpulan Prediksi Algoritma:** Berdasarkan kemiringan garis regresi pada data historis, volume produksi 12 minggu ke depan diproyeksikan akan mengalami tren **{kondisi}**.")
             
 else:
     st.info("👈 Silakan unggah file CSV Anda pada menu di sebelah kiri layar.")
