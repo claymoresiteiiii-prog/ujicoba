@@ -21,20 +21,32 @@ def auto_cleaning_pipeline(raw_df):
     3. Imputasi nilai hilang (NaN) dengan Median.
     4. Koreksi nilai negatif menjadi absolut.
     """
+def auto_cleaning_pipeline(raw_df):
+    """
+    Fungsi pipeline untuk membersihkan data secara otomatis:
+    1. Menghapus baris kosong.
+    2. Konversi tipe data string ke numerik.
+    3. Imputasi nilai hilang (NaN) dengan Median.
+    4. Koreksi nilai negatif menjadi absolut.
+    """
     df_clean = raw_df.copy()
     
     # 1. Menghapus baris yang seluruh isinya kosong
     df_clean.dropna(how='all', inplace=True)
     
     # 2. Standarisasi Tipe Data Numerik
+    # Pastikan nama variabel di bawah ini (kolom_harus_numerik) konsisten
     kolom_harus_numerik = ['Volume Mingguan (Liter)', 'Volume Harian (Liter)', 'Harga per Liter (Rp)', 'Minggu Ke', 'Tahun', 'Bulan']
-    for col in kolom_haruk_numeris:
+    
+    for col in kolom_harus_numerik: 
         if col in df_clean.columns:
+            # Jika kolom terbaca sebagai teks (object), bersihkan koma ribuan
             if df_clean[col].dtype == object:
                 df_clean[col] = df_clean[col].astype(str).str.replace(',', '', regex=True)
+            # Paksa menjadi angka, jika gagal akan menjadi NaN
             df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
             
-    # 3. Menangani Missing Values (Imputasi Median untuk angka, 'Unknown' untuk teks)
+    # 3. Menangani Missing Values (Imputasi Median untuk angka, 'Tidak Diketahui' untuk teks)
     numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
     for col in numeric_cols:
         if df_clean[col].isnull().any():
@@ -45,7 +57,7 @@ def auto_cleaning_pipeline(raw_df):
         if df_clean[col].isnull().any():
             df_clean[col] = df_clean[col].fillna("Tidak Diketahui")
             
-    # 4. Koreksi Anomali Nilai Negatif
+    # 4. Koreksi Anomali Nilai Negatif (Mengubah angka minus menjadi plus)
     for col in numeric_cols:
         df_clean[col] = df_clean[col].abs()
         
