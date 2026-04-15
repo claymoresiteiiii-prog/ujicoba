@@ -54,15 +54,32 @@ if uploaded_file is not None:
         """)
 
     with col2:
-        # Grafik Distribusi Volume
-        fig_vol = px.box(df, y="Volume Mingguan (Liter)", 
-                         title="Apakah produksi susu stabil atau sering naik-turun?",
-                         color_discrete_sequence=['#54A24B'])
-        st.plotly_chart(fig_vol, use_container_width=True)
+        # Pengecekan: Apakah kolom Volume Mingguan ada?
+        if "Volume Mingguan (Liter)" in df.columns:
+            # Grafik Distribusi Volume Mingguan
+            fig_vol = px.box(df, y="Volume Mingguan (Liter)", 
+                             title="Apakah produksi susu stabil atau sering naik-turun?",
+                             color_discrete_sequence=['#54A24B'])
+            st.plotly_chart(fig_vol, use_container_width=True)
+            
+            # Teks Analisis Otomatis
+            vol_rata = df['Volume Mingguan (Liter)'].mean()
+            st.info(f"""
+            **💡 Cara Membaca:**
+            Grafik kotak (boxplot) ini melihat kestabilan produksi. Titik di luar kotak adalah anomali.
+            * Rata-rata peternakan menghasilkan **{vol_rata:,.0f} liter** susu per minggunya.
+            """)
+            
+        # Jika tidak ada, cek apakah ada Volume Harian (sebagai cadangan)
+        elif "Volume Harian (Liter)" in df.columns:
+            fig_vol = px.box(df, y="Volume Harian (Liter)", 
+                             title="Distribusi Volume Harian (Liter)",
+                             color_discrete_sequence=['#54A24B'])
+            st.plotly_chart(fig_vol, use_container_width=True)
+            st.warning("⚠️ Menampilkan grafik berdasarkan 'Volume Harian' karena kolom 'Volume Mingguan' tidak ditemukan pada file ini.")
         
-        # Teks Analisis Otomatis
-        vol_rata = df['Volume Mingguan (Liter)'].mean()
-        st.info(f"""
+        else:
+            st.error("❌ Kolom data Volume Susu tidak ditemukan di file CSV Anda.")
         **💡 Cara Membaca:**
         Grafik kotak (boxplot) ini melihat kestabilan produksi. Titik di luar kotak adalah anomali (produksi sangat sedikit atau sangat banyak).
         * Rata-rata peternakan menghasilkan **{vol_rata:,.0f} liter** susu per minggunya.
