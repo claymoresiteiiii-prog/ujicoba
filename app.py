@@ -231,5 +231,4 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 Silakan unggah file CSV Amang Farm di sidebar.")
-print(f"Jumlah baris awal: {len(raw_df)}")
-print(f"Jumlah baris setelah dibersihkan: {len(df_clean)}")
+
