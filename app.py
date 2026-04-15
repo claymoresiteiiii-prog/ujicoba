@@ -10,31 +10,63 @@ st.set_page_config(page_title="Dashboard Amang Farm", layout="wide")
 st.title("🐄 Dashboard Analisis Cerdas Peternakan Sapi Perah")
 st.markdown("Sistem otomatis untuk pembersihan, visualisasi, dan prediksi tren penjualan susu Amang Farm.")
 
+# ==========================================
+# FUNGSI PIPELINE PEMBERSIHAN DATA (BARU)
+# ==========================================
+def auto_cleaning_pipeline(raw_df):
+    df_clean = raw_df.copy()
+    
+    # 1. Menghapus baris yang seluruh isinya kosong (NaN)
+    df_clean.dropna(how='all', inplace=True)
+    
+    # 2. Standarisasi Tipe Data Numerik
+    # Memaksa kolom tertentu menjadi angka, jika ada huruf/simbol akan diubah jadi NaN lalu diimputasi
+    kolom_harus_numerik = ['Volume Mingguan (Liter)', 'Volume Harian (Liter)', 'Harga per Liter (Rp)', 'Minggu Ke', 'Tahun', 'Bulan']
+    for col in kolom_harus_numerik:
+        if col in df_clean.columns:
+            # Hilangkan koma ribuan jika terbaca sebagai string
+            if df_clean[col].dtype == object:
+                df_clean[col] = df_clean[col].astype(str).str.replace(',', '', regex=True)
+            df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
+            
+    # 3. Menangani Missing Values (Imputasi)
+    numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
+    for col in numeric_cols:
+        if df_clean[col].isnull().any():
+            df_clean[col] = df_clean[col].fillna(df_clean[col].median())
+            
+    object_cols = df_clean.select_dtypes(include=['object']).columns
+    for col in object_cols:
+        if df_clean[col].isnull().any():
+            df_clean[col] = df_clean[col].fillna("Tidak Diketahui")
+            
+    # 4. Koreksi Anomali Nilai Negatif (Volume / Harga tidak mungkin minus)
+    for col in numeric_cols:
+        df_clean[col] = df_clean[col].abs()
+        
+    return df_clean
+
 # 1. Fitur Upload Dataset
 uploaded_file = st.file_uploader("📂 Unggah file CSV Anda (Format: Tahun, Bulan, Minggu Ke, Hari/Tanggal, Volume, Harga):", type=["csv"])
 
 if uploaded_file is not None:
-    # Membaca file
-    df = pd.read_csv(uploaded_file)
+    # Membaca file mentah
+    df_mentah = pd.read_csv(uploaded_file)
     
     # ==========================================
-    # 1. DATA CLEANING
+    # 1. EKSEKUSI DATA CLEANING PIPELINE
     # ==========================================
     st.header("🧹 1. Pembersihan Data Otomatis")
-    jml_missing = df.isnull().sum().sum()
-    if jml_missing > 0:
-        df.dropna(how='all', inplace=True)
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
-        for col in numeric_cols:
-            if df[col].isnull().any():
-                df[col] = df[col].fillna(df[col].median())
-        object_cols = df.select_dtypes(include=['object']).columns
-        for col in object_cols:
-            if df[col].isnull().any():
-                df[col] = df[col].fillna("Tidak Diketahui")
-        st.success(f"✅ Data dibersihkan untuk menjaga integritas analisis.")
+    
+    # Memasukkan data mentah ke dalam pipeline
+    df = auto_cleaning_pipeline(df_mentah)
+    
+    # Pengecekan apakah data mentah berbeda dengan data bersih untuk memberi tahu user
+    jml_missing_awal = df_mentah.isnull().sum().sum()
+    if jml_missing_awal > 0 or not df_mentah.equals(df):
+        st.success(f"✅ Data berhasil melewati pipeline pembersihan otomatis (Imputasi NaN, Koreksi Tipe Data, & Perbaikan Anomali Negatif).")
     else:
-        st.success("✅ Data siap diolah.")
+        st.success("✅ Data awal sudah sangat baik dan siap diolah.")
 
     # ==========================================
     # 2. PRE-PROCESSING & FILTERING
@@ -110,7 +142,6 @@ if uploaded_file is not None:
     st.sidebar.markdown("---")
     st.sidebar.header("👁️ Tampilan Visualisasi")
     
-    # Menggunakan Checkbox, parameter value=True berarti otomatis dicentang di awal
     tampil_deskriptif = st.sidebar.checkbox("1. Analisis Deskriptif & Musiman", value=True)
     tampil_profit = st.sidebar.checkbox("2. Analisis Profit & Pendapatan", value=True)
     tampil_korelasi = st.sidebar.checkbox("3. Korelasi & Persentase Profit", value=True)
