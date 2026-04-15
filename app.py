@@ -28,7 +28,7 @@ def auto_cleaning_pipeline(raw_df):
     
     # 2. Standarisasi Tipe Data Numerik
     kolom_harus_numerik = ['Volume Mingguan (Liter)', 'Volume Harian (Liter)', 'Harga per Liter (Rp)', 'Minggu Ke', 'Tahun', 'Bulan']
-    for col in kolom_haruk_numerik:
+    for col in kolom_haruk_numeris:
         if col in df_clean.columns:
             if df_clean[col].dtype == object:
                 df_clean[col] = df_clean[col].astype(str).str.replace(',', '', regex=True)
