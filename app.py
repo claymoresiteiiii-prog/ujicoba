@@ -149,7 +149,7 @@ if uploaded_file is not None:
     else:
         # --- A. ANALISIS UNIVARIAT & DESKRIPTIF (Hist & Bar) ---
         if tampil_deskriptif:
-            st.header(f"📊 1. Analisis Univariat & Deskriptif ({tahun_terpilih})")
+            st.header(f"📊 2. Analisis Univariat & Deskriptif ({tahun_terpilih})")
             
             c1, c2 = st.columns(2)
             # Grafik Univariat 1: Histogram Volume (Dari Skripsi)
@@ -182,7 +182,7 @@ if uploaded_file is not None:
 
         # --- B. ANALISIS PROFIT (Tetap Dipertahankan Sesuai Code Awal) ---
         if tampil_profit:
-            st.header("💰 2. Analisis Profit & Pendapatan")
+            st.header("💰 3. Analisis Profit & Pendapatan")
             if 'Estimasi Profit (Rp)' in df_final.columns:
                 df_final['Profit (Juta Rp)'] = df_final['Estimasi Profit (Rp)'] / 1_000_000
                 df_final['Label Waktu'] = "Mg " + df_final['Minggu Ke'].astype(str)
@@ -205,7 +205,7 @@ if uploaded_file is not None:
 
         # --- C. ANALISIS BIVARIAT KORELASI & PIE ---
         if tampil_korelasi:
-            st.header("🌐 3. Analisis Bivariat (Korelasi & Distribusi)")
+            st.header("🌐 4. Analisis Bivariat (Korelasi & Distribusi)")
             c3, c4 = st.columns(2)
             
             # Grafik Bivariat 2: Scatter Plot (Dari Skripsi)
@@ -230,7 +230,7 @@ if uploaded_file is not None:
 
         # --- D. ANALISIS MULTIVARIAT (BARU DITAMBAHKAN SESUAI SKRIPSI 4.1.4.C.1) ---
         if tampil_multivariat:
-            st.header("🧭 4. Analisis Multivariat")
+            st.header("🧭 5. Analisis Multivariat")
             
             # Menyiapkan kolom warna agar dibaca sebagai kategori (bukan gradasi angka)
             df_final['Tahun_Kategori'] = df_final['Tahun'].astype(str)
@@ -250,7 +250,7 @@ if uploaded_file is not None:
 
         # --- E. PREDIKSI TREN (MULTIVARIAT PREDIKTIF) ---
         if tampil_prediksi:
-            st.header("📈 5. Prediksi Tren Penjualan Masa Depan")
+            st.header("📈 6. Prediksi Tren Penjualan Masa Depan")
             
             df_pred = df_final.sort_values(by=['Tahun', 'Minggu Ke']).reset_index(drop=True)
             df_pred['Urutan_Waktu'] = df_pred.index + 1
